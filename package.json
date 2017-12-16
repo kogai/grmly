@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "bsb -make-world",
-    "start": "bsb -make-world -w",
+    "watch": "bsb -make-world -w",
+    "start": "yarn build && node src/main.bs.js",
     "clean": "bsb -clean-world"
   },
   "keywords": [
@@ -13,5 +14,8 @@
   "license": "MIT",
   "devDependencies": {
     "bs-platform": "^2.0.1"
+  },
+  "dependencies": {
+    "puppeteer": "^0.13.0"
   }
 }
