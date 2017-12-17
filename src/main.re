@@ -39,6 +39,13 @@ external waitForSelector :
 
 [@bs.send] external on : (page, string, response => 'b) => Js.Promise.t(unit) = "on";
 
+[@bs.send] external evaluate : (page, 'a => 'b, 'a) => Js.Promise.t('b) = "evaluate";
+
+[@bs.send] external evaluateHandle : (page, 'a => 'b, 'a) => Js.Promise.t('b) = "evaluateHandle";
+
+[@bs.send] external exposeFunction : (page, string, 'a => 'b) => Js.Promise.t(unit) =
+  "exposeFunction";
+
 [@bs.send] external close : browser => Js.Promise.t(unit) = "close";
 
 let url = "https://app.grammarly.com/";
@@ -63,8 +70,7 @@ let _ = {
            browser
            |> newPage
            |> then_(
-                (page) => {
-                  Js.log("OK");
+                (page) =>
                   page
                   |> goto(~url=signIn)
                   |> then_((_) => type_(page, "input[type=email]", email, None))
@@ -79,19 +85,26 @@ let _ = {
                   |> then_((_) => waitForSelector(page, "textarea#textarea", Js.Undefined.empty))
                   |> then_(
                        (_) => {
-                         let _ =
-                           on(
+                         let conn =
+                           evaluate(
                              page,
-                             "response",
-                             (res) => {
-                               /* wss://dox.grammarly.com/documents/243288472/ws */
-                               let url = res##url;
-                               let isMatch =
-                                 Js.Re.fromString("^https://dox.grammarly.com/documents");
-                               if (Js.Re.test(url, isMatch)) {
-                                 Js.log(res##url)
-                               }
-                             }
+                             [%raw
+                               {|() => new Promise((resolve) => {
+                                  console.log('Evalueated!!!');
+                                  const ws = new WebSocket("wss://capi.grammarly.com/freews");
+                                  ws.addEventListener("message", payload => resolve(payload));
+                               })
+                                |}
+                             ],
+                             ()
+                           );
+                         let _ =
+                           then_(
+                             (p) => {
+                               Js.log(p);
+                               resolve()
+                             },
+                             conn
                            );
                          type_(page, "textarea#textarea", sentence, None)
                        }
@@ -107,7 +120,6 @@ let _ = {
                      )
                   |> then_((_res) => screenshot(page, {"path": "screenshot/checked.png"}))
                   |> then_((_) => close(browser))
-                }
               )
        );
   ()
